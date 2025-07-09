@@ -289,10 +289,23 @@ async function openNewRotationModal(client, trigger_id, channel, preName = '') {
 
 // ─── Core pick logic ───────────────────────────────────────────────────────────
 async function startPick(channel, name, client) {
-  const queue = queueStore.getItem(channel, name) || [];
-  if (!queue.length) {
-    return client.chat.postMessage({ channel, text: `Rotation *${name}* is empty.` });
+  let queue = queueStore.getItem(channel, name) || [];
+  const cfg = configStore.getItem(channel, name) || {};
+  const members = cfg.members || [];
+
+  if (queue.length === 0) {
+    if (members.length > 0) {
+      console.log(`Queue for "${name}" is empty. Repopulating and shuffling.`);
+      queue = [...members];
+      for (let i = queue.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [queue[i], queue[j]] = [queue[j], queue[i]];
+      }
+    } else {
+       return client.chat.postMessage({ channel, text: `Rotation *${name}* is empty and has no members configured.` });
+    }
   }
+
   const user = queue.shift();
   queueStore.setItem(channel, name, queue);
 
@@ -315,7 +328,7 @@ async function startPick(channel, name, client) {
 
   const key = `${channel}:${name}:${user}`;
   activeMessages[key] = response.ts;
-  const timeoutMinutes = configStore.getItem(channel, name).timeout;
+  const timeoutMinutes = cfg.timeout;
 
   if (timeoutMinutes) {
     activeTimers[key] = setTimeout(
@@ -494,7 +507,7 @@ app.action('delete_rotation_start', async ({ ack, body, client }) => {
   } catch (error) { console.error('Error opening delete confirmation modal:', error.data || error); }
 });
 
-app.view('cucumber_new', async ({ack,view,client})=>{
+app.view('cucumber_new', async ({ack,body,view,client})=>{
   const v = view.state.values;
   const time = v.schedule_time.time_input.value;
 
@@ -527,7 +540,7 @@ app.view('cucumber_new', async ({ack,view,client})=>{
       queueStore.deleteItem(channel, editingName);
     }
 
-    configStore.setItem(channel,name,{ days, time, tz: tzValue, timeout, frequency, postWeeklySummary, summaryOnlyOnMondays, startDate: new Date().toISOString() });
+    configStore.setItem(channel,name,{ days, time, tz: tzValue, timeout, frequency, postWeeklySummary, summaryOnlyOnMondays, startDate: new Date().toISOString(), members });
     queueStore.setItem(channel,name,members);
 
     await ensureBotInChannel(client,channel);
@@ -539,6 +552,21 @@ app.view('cucumber_new', async ({ack,view,client})=>{
     scheduleAll();
     
     if (!editingName) { await startPick(channel,name,client); }
+    
+    // Refresh the main view
+    const newBlocks = await buildRotationsViewBlocks(channel);
+    await client.views.update({
+        view_id: body.view.root_view_id,
+        view: {
+            type: 'modal',
+            callback_id: 'cucumber_select',
+            private_metadata: channel,
+            title: { type: 'plain_text', text: 'Cucumber Rotations' },
+            submit: { type: 'plain_text', text: 'Done' },
+            blocks: newBlocks
+        }
+    });
+
   } catch (error) { console.error('Error handling cucumber_new view submission:', error); }
 });
 

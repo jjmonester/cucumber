@@ -2,7 +2,7 @@
   "C094XV7L6F5": {
     "Who's on Retro": {
       "days": [
-        "mon"
+        "tue"
       ],
       "time": "23:38",
       "tz": "Etc/GMT-1",
@@ -10,7 +10,10 @@
       "frequency": "fortnightly",
       "postWeeklySummary": false,
       "summaryOnlyOnMondays": false,
-      "startDate": "2025-07-09T22:37:43.728Z"
+      "startDate": "2025-07-09T22:46:02.703Z",
+      "members": [
+        "USLACKBOT"
+      ]
     },
     "Sweep": {
       "days": [
@@ -26,7 +29,12 @@
       "frequency": "weekly",
       "postWeeklySummary": false,
       "summaryOnlyOnMondays": false,
-      "startDate": "2025-07-09T22:38:07.832Z"
+      "startDate": "2025-07-09T22:42:50.585Z",
+      "members": [
+        "U09501PF30V",
+        "U09516WPPQS",
+        "USLACKBOT"
+      ]
     }
   }
 }
