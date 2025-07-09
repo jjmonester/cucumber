@@ -72,12 +72,12 @@ const queueStore  = new NestedStore('rotations.json');
 // ─── Bolt + Socket Mode setup ─────────────────────────────────────────────────
 const socketReceiver = new SocketModeReceiver({
   appToken: process.env.SLACK_APP_TOKEN,
-  logLevel: LogLevel.DEBUG
+  logLevel: LogLevel.INFO
 });
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   receiver: socketReceiver,
-  logLevel: LogLevel.DEBUG
+  logLevel: LogLevel.INFO
 });
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
