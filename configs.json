@@ -1,0 +1,24 @@
+{
+  "C09501PRB4M": {
+    "Test 1": {
+      "channels": [],
+      "strategy": "roundrobin",
+      "retry": 3,
+      "timeout": 30
+    },
+    "Sonnet": {
+      "days": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri"
+      ],
+      "time": "17:04",
+      "tz": "Australia/Melbourne",
+      "strategy": "roundrobin",
+      "retry": 3,
+      "timeout": 1
+    }
+  }
+}
