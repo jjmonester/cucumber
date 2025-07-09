@@ -173,8 +173,8 @@ function buildNewRotationView(channel, preName = '') {
         element: { type: 'checkboxes', action_id: 'summary_options_select',
           ...(initialSummaryOptions.length > 0 && { initial_options: initialSummaryOptions }),
           options: [
-            { text: { type: 'plain_text', text: 'Include list of future rotations in post' }, value: 'postWeeklySummary' },
-            { text: { type: 'plain_text', text: '(If above) Only show list on Mondays' }, value: 'summaryOnlyOnMondays' }
+            { text: { type: 'plain_text', text: 'Post a weekly schedule summary' }, value: 'postWeeklySummary' },
+            { text: { type: 'plain_text', text: 'Only post the summary on Mondays' }, value: 'summaryOnlyOnMondays' }
           ]
         }
       }
@@ -187,12 +187,18 @@ async function buildRotationsViewBlocks(channel) {
   const rotations = Object.keys(configStore.get(channel));
   const blocks = [];
 
-  if (rotations.length > 0 && rotations.some(r => typeof configStore.getItem(channel, r) === 'object' && configStore.getItem(channel, r) !== null)) {
+  const hasRotations = rotations.some(r => {
+    const cfg = configStore.getItem(channel, r);
+    return typeof cfg === 'object' && cfg !== null && Array.isArray(cfg.days);
+  });
+
+  if (hasRotations) {
     blocks.push({ type: 'header', text: { type: 'plain_text', text: 'Existing rotations' } });
 
     for (const name of rotations) {
       const cfg = configStore.getItem(channel, name);
-      if (typeof cfg !== 'object' || cfg === null || !cfg.timeout) continue;
+      // **THE FIX IS HERE:** A rotation is now identified by having a `days` array.
+      if (typeof cfg !== 'object' || cfg === null || !Array.isArray(cfg.days)) continue;
 
       const queue = queueStore.getItem(channel, name) || [];
       let scheduleText = '_Rotation is missing a schedule (days, time, or timezone)._';

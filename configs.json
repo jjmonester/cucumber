@@ -15,5 +15,21 @@
       "summaryOnlyOnMondays": false
     },
     "showAudit": false
+  },
+  "C094VF5KSJX": {
+    "🧹 Sweep": {
+      "days": [
+        "mon",
+        "tue",
+        "wed",
+        "thu",
+        "fri"
+      ],
+      "time": "22:28",
+      "tz": "Etc/GMT-1",
+      "timeout": null,
+      "postWeeklySummary": false,
+      "summaryOnlyOnMondays": false
+    }
   }
 }
