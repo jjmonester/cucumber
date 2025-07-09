@@ -1,5 +1,6 @@
 🥒 Cucumber Bot
 ===============
+Pickle is dead. Turnip was on the horizon. But Cucumber is here, fresh, crunchy and entirely un-pickled. No dev knowledge and entirely bug ridden (probably) this vibe coding experiment is an attempt to fill the void Pickle left in our world. 
 
 Cucumber Bot is a Slack application designed to manage on-call rotations, daily hand-offs, and other scheduled team tasks with ease. It provides a simple, interactive interface within Slack to create, manage, and automate user queues.
 
