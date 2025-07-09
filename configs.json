@@ -1,12 +1,6 @@
 {
   "C09501PRB4M": {
-    "Test 1": {
-      "channels": [],
-      "strategy": "roundrobin",
-      "retry": 3,
-      "timeout": 30
-    },
-    "Sonnet": {
+    "🧹 Sweep": {
       "days": [
         "mon",
         "tue",
@@ -14,11 +8,12 @@
         "thu",
         "fri"
       ],
-      "time": "17:04",
-      "tz": "Australia/Melbourne",
-      "strategy": "roundrobin",
-      "retry": 3,
-      "timeout": 1
-    }
+      "time": "21:55",
+      "tz": "Etc/GMT-1",
+      "timeout": 1,
+      "postWeeklySummary": false,
+      "summaryOnlyOnMondays": false
+    },
+    "showAudit": false
   }
 }

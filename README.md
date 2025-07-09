@@ -1,116 +1,99 @@
-# cucumber# Cucumber Bot: User Guide & Feature Reference
+🥒 Cucumber Bot
+===============
 
-This document explains how to interact with the Cucumber Bot, its full feature set, and how to add or configure slash commands in your Slack App.
+Cucumber Bot is a Slack application designed to manage on-call rotations, daily hand-offs, and other scheduled team tasks with ease. It provides a simple, interactive interface within Slack to create, manage, and automate user queues.
 
----
+Features
+--------
 
-## 1. Overview
+### Core Functionality
 
-Cucumber Bot is a round‐robin scheduler for Slack. It lets teams manage recurring tasks (code reviews, meeting hosts, etc.) by maintaining a dynamic queue of users or user groups. When you invoke the bot, it:
+*   **Create, Edit, and Delete Rotations**: Easily manage multiple, independent rotations within any Slack channel.
+    
+*   **Round Robin Strategy**: All rotations automatically follow a simple round-robin (first-in, first-out) queue.
+    
+*   **Persistent Storage**: Your rotation configurations and user queues are saved locally in configs.json and rotations.json, so they persist even if the bot restarts.
+    
 
-1. Picks the next person in the queue
-2. DMs them to **Accept** or **Skip**
-3. If skipped (or unavailable), pushes them to the queue’s tail and tries the next
-4. Announces the result back in the original channel
+### Slash Commands
 
-Socket Mode is used, so no public HTTPS endpoint is required—just run the bot code and ensure the `xapp-…` token is set.
+The bot is controlled through a primary slash command, /cucumber, with several sub-commands:
 
----
+*   /cucumber: Opens the main interactive modal to view and manage all rotations in the current channel.
+    
+*   /cucumber \[rotation-name\]: Manually triggers a pick from the specified rotation, sending a prompt to the next user in the queue.
+    
+*   /cucumber shuffle \[rotation-name\]: Instantly randomizes the order of the user queue for a specific rotation.
+    
+*   /cucumber help: Displays a brief, ephemeral help message listing all available commands.
+    
 
-## 2. Prerequisites
+### Interactive UI & Workflow
 
-- **Bot & App Tokens** in your local `.env`:  
-  ```dotenv
-  SLACK_BOT_TOKEN=xoxb-…
-  SLACK_APP_TOKEN=xapp-…
-  SLACK_SIGNING_SECRET=…
-  ```
-- **OAuth Scopes**:  
-  - `commands`, `chat:write`, `im:write`  
-  - `channels:read`, `channels:join`  
-  - `groups:read`, `groups:write` (if using in private channels)
-- **Socket Mode** enabled in your Slack App settings
+*   **Central Management Modal**: The /cucumber command opens a user-friendly modal that lists all existing rotations, shows the next 5 upcoming picks for each, and allows you to create new rotations.
+    
+*   **In-Place Message Updates**: To reduce channel noise, the bot's messages update in-place. A prompt to a user transforms into a confirmation message upon acceptance, creating a single, clean record of the hand-off.
+    
+*   **Silent Skips & Declines**: When a user skips or declines a rotation, the bot silently moves to the next person in the queue without posting extra messages in the channel, keeping conversations focused.
+    
 
----
+### Scheduling & Automation
 
-## 3. Slash Command: `/cucumber`
+*   **Flexible Scheduling**: Configure rotations to run on specific days of the week (e.g., Mon, Wed, Fri) at a specific time.
+    
+*   **Global Timezones**: Set the schedule for any timezone using a simple UTC offset dropdown (from UTC-12:00 to UTC+14:00).
+    
+*   **Optional Timeouts**: You can set an optional timeout (in minutes) for each rotation. If a user doesn't respond within the specified time, they are automatically skipped. If left blank, the bot will wait indefinitely.
+    
+*   **Optional Weekly Summaries**: For enhanced visibility, you can configure each rotation to proactively post a summary of the upcoming week's schedule. This can be set to post every Monday or on every day the rotation is scheduled to run.
+    
 
-### 3.1 Usage
+Setup and Installation
+----------------------
 
-In any public or private channel where the bot is present, type:
+Follow these steps to get the Cucumber Bot running in your Slack workspace.
 
-```
-/cucumber @user1 @user2 <!subteam^S123|@team> #channel
-```
+#### 1\. Prerequisites
 
-- **@user**, **@team**, or **#channel** mentions define the rotation membership.
-- If the queue is empty (first run), Cucumber initializes it in the order you specify.
-- The bot will DM the first member and await their response.
+*   [Node.js](https://nodejs.org/) (v14 or higher)
+    
+*   A Slack App with Socket Mode enabled.
+    
 
-### 3.2 Responses
+#### 2\. Clone the Repository
+`git clone   cd cucumber-bot `
 
-- In‐channel acknowledgment:  
-  `Asking @alice…`
-- DM to picked user with **Accept** / **Skip** buttons.
-- In‐channel announcements:
-  - On **Accept**: `@alice accepted the task!`
-  - On **Skip**: `@alice was skipped—trying next…` and the cycle continues.
+#### 3\. Install Dependencies
 
----
+`   npm install   `
 
-## 4. Action Buttons & Flow
+#### 4\. Configure Environment Variables
 
-1. **Accept**  
-   - Immediately ends the rotation for this invocation and announces acceptance.
-2. **Skip**  
-   - Returns the user to the tail of the queue.  
-   - Bot posts a skip notice, then will either continue automatically (if you integrate auto-reinvoke) or prompt users to run `/cucumber` again.
+Create a file named .env in the root of your project directory. This file will store the necessary tokens for your Slack app.
 
+*   SLACK\_BOT\_TOKEN: This is the Bot User OAuth Token, which starts with xoxb-. Find it in your Slack App's "OAuth & Permissions" page.
+    
+*   SLACK\_APP\_TOKEN: This is an app-level token required for Socket Mode. It starts with xapp-. Generate one on your Slack App's "Basic Information" page under the "App-Level Tokens" section.
+    
 
----
+Your .env file should look like this:
+`SLACK_BOT_TOKEN=xoxb-xxxxxxxxxxxx-xxxxxxxxxxxxxxxx-xxxxxxxx  SLACK_APP_TOKEN=xapp-x-xxxx-xxxxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx   `
 
-## 5. Feature Set
+#### 5\. Run the Bot
 
-- **Round‐Robin, Stateful Queues**: Remembers order across invocations.
-- **Skip + Requeue**: Skipped users return to the end; no one gets tried twice in one cycle until all have been attempted.
-- **Socket Mode**: No need for public URLs or ngrok—bot connects via WebSocket.
-- **JSON‐backed Store**: Simple `rotations.json` file stores per-channel queues.
-- **Auto‐Join**: Bot automatically calls `conversations.join` before posting to ensure it’s a channel member.
-- **Multi‐Member Support**: Accepts individual users and user groups (`<!subteam^…>`).
+Start the application with the following command:
 
----
+` npm start   `
 
-## 6. Inviting the Bot
+If successful, you will see the message "⚡️ Cucumber Bot running!" in your console. You can now invite the bot to a channel in Slack and start using the /cucumber command.
 
-If you ever see `not_in_channel` errors, ensure the bot is a member of the channel:
-```bash
-/invite @CucumberBot
-```
-or grant the `channels:join` scope and let the bot join programmatically.
+Usage Examples
+--------------
 
----
-
-## 7. Adding or Modifying Slash Commands
-
-1. **Go to** [api.slack.com/apps] → *Your App* → **Slash Commands**.  
-2. **Create New Command** (or edit `/cucumber`):
-   - **Command**: `/cucumber`
-   - **Request URL**: *Not used in Socket Mode* (can be left blank or set to any valid HTTPS URL).
-   - **Short Description**: e.g., "Start a new rotation pick."
-   - **Usage Hint**: `@user1 @user2 @team`.
-3. **Save Changes**.  
-4. **Re‐install App** under **OAuth & Permissions** if you add new scopes.
-
-
----
-
-## 8. Common Troubleshooting
-
-- **Missing Dependencies**: `npm install @slack/bolt dotenv`
-- **ENV Variables Not Loaded**: Ensure `require('dotenv').config()` sits at the very top of `index.js`.
-- **App‐Level Token Errors**: Verify `SLACK_APP_TOKEN` is set to your `xapp-…` value.
-- **`not_in_channel`**: Invite the bot or use `conversations.join` in code.
-
----
-
-For further customization or questions, feel free to reach out. Happy scheduling! 🎉
+*   **Manage Rotations**: Type /cucumber in any channel the bot is in.
+    
+*   **Start a Rotation Manually**: /cucumber Sweep
+    
+*   **Shuffle a Queue**: /cucumber shuffle Sweep
+    
+*   **Get Help**: /cucumber help
