@@ -72,12 +72,12 @@ const queueStore  = new NestedStore('rotations.json');
 // ─── Bolt + Socket Mode setup ─────────────────────────────────────────────────
 const socketReceiver = new SocketModeReceiver({
   appToken: process.env.SLACK_APP_TOKEN,
-  logLevel: LogLevel.INFO
+  logLevel: LogLevel.DEBUG
 });
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
   receiver: socketReceiver,
-  logLevel: LogLevel.INFO
+  logLevel: LogLevel.DEBUG
 });
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
@@ -85,18 +85,17 @@ async function ensureBotInChannel(client, channel) {
   try { await client.conversations.join({ channel }); } catch {}
 }
 
+function toNativeDate(dateObj) {
+  if (!dateObj) return null;
+  if (dateObj instanceof Date) return dateObj;
+  if (typeof dateObj.toJSDate === 'function') return dateObj.toJSDate();
+  if (typeof dateObj.toDate === 'function') return dateObj.toDate();
+  return null;
+}
+
 function formatDateObject(dateObj) {
-  if (!dateObj) return 'Invalid Date';
-  if (typeof dateObj.toJSDate === 'function') {
-    return dateObj.toJSDate().toDateString();
-  }
-  if (typeof dateObj.toDate === 'function') {
-    return dateObj.toDate().toDateString();
-  }
-  if (typeof dateObj.toDateString === 'function') {
-    return dateObj.toDateString();
-  }
-  return 'Invalid Date';
+  const nativeDate = toNativeDate(dateObj);
+  return nativeDate ? nativeDate.toDateString() : 'Invalid Date';
 }
 
 
@@ -121,6 +120,17 @@ function buildNewRotationView(channel, preName = '') {
   if (existingConfig?.summaryOnlyOnMondays) {
     initialSummaryOptions.push({ text: { type: 'plain_text', text: 'Only post the summary on Mondays' }, value: 'summaryOnlyOnMondays' });
   }
+
+  const frequencyOptions = [
+      { text: { type: 'plain_text', text: 'Weekly' }, value: 'weekly' },
+      { text: { type: 'plain_text', text: 'Fortnightly' }, value: 'fortnightly' },
+      { text: { type: 'plain_text', text: 'Monthly (every 4 weeks)' }, value: 'monthly' }
+  ];
+
+  let initialFrequencyOption;
+  if (existingConfig && existingConfig.frequency) {
+    initialFrequencyOption = frequencyOptions.find(opt => opt.value === existingConfig.frequency);
+  }
   
   return {
     type: 'modal',
@@ -136,7 +146,15 @@ function buildNewRotationView(channel, preName = '') {
         element:{type:'multi_users_select',action_id:'members_select',
           ...(existingQueue && existingQueue.length > 0 ? { initial_users: existingQueue } : {})
         } },
-      { type:'input', block_id:'schedule_days', label:{type:'plain_text',text:'Days'},
+      { type: 'divider' },
+      { type: 'header', text: { type: 'plain_text', text: 'Schedule' } },
+      { type:'input', block_id:'frequency_block', label:{type:'plain_text',text:'Frequency'},
+        element:{type:'static_select', action_id:'frequency_select',
+          placeholder: { type: 'plain_text', text: 'Select frequency' },
+          initial_option: initialFrequencyOption || frequencyOptions[0],
+          options: frequencyOptions
+        } },
+      { type:'input', block_id:'schedule_days', label:{type:'plain_text',text:'On'},
         element:{type:'multi_static_select',action_id:'days_select',
           ...(existingConfig && existingConfig.days ? { initial_options: existingConfig.days.map(day => ({
             text: {type:'plain_text',text:day.charAt(0).toUpperCase() + day.slice(1)},
@@ -152,17 +170,18 @@ function buildNewRotationView(channel, preName = '') {
             {text:{type:'plain_text',text:'Sun'},value:'sun'}
           ]
         } },
-      { type:'input', block_id:'schedule_time', label:{type:'plain_text',text:'Time'},
+      { type:'input', block_id:'schedule_time', label:{type:'plain_text',text:'At (Time)'},
         element:{type:'plain_text_input',action_id:'time_input',
           placeholder:{type:'plain_text',text:'e.g., 09:30 or 23:00'},
           ...(existingConfig && existingConfig.time ? { initial_value: existingConfig.time } : {})
         } },
-      { type:'input', block_id:'schedule_tz', label:{type:'plain_text',text:'Timezone'},
+      { type:'input', block_id:'schedule_tz', label:{type:'plain_text',text:'In (Timezone)'},
         element:{type:'static_select', action_id:'tz_select',
           placeholder: { type: 'plain_text', text: 'Select a timezone' },
           ...(initialTimezoneOption && { initial_option: initialTimezoneOption }),
           options: TIMEZONE_OPTIONS
         } },
+      { type: 'divider' },
       { type:'input', optional: true, block_id:'timeout_block', label:{type:'plain_text',text:'Timeout (minutes)'},
         element:{type:'plain_text_input',action_id:'timeout_input',
           placeholder:{type:'plain_text',text:'(optional) e.g., 10'},
@@ -197,7 +216,6 @@ async function buildRotationsViewBlocks(channel) {
 
     for (const name of rotations) {
       const cfg = configStore.getItem(channel, name);
-      // **THE FIX IS HERE:** A rotation is now identified by having a `days` array.
       if (typeof cfg !== 'object' || cfg === null || !Array.isArray(cfg.days)) continue;
 
       const queue = queueStore.getItem(channel, name) || [];
@@ -205,16 +223,7 @@ async function buildRotationsViewBlocks(channel) {
       
       if (cfg.days && cfg.days.length > 0 && cfg.time && cfg.tz && queue.length > 0) {
         try {
-          const timeParts = cfg.time.split(':');
-          if (timeParts.length !== 2) throw new Error(`Invalid time format: ${cfg.time}`);
-          const [h, m] = timeParts.map(Number);
-          if (isNaN(h) || isNaN(m)) throw new Error('Time contains non-numeric characters.');
-          const days = cfg.days.map(d => WEEKDAY_MAP[d]).join(',');
-          const cronPattern = `${m} ${h} * * ${days}`;
-          const job = new CronJob(cronPattern, () => {}, null, false, cfg.tz);
-          const nextDates = job.nextDates(5);
-          
-          const scheduleLines = nextDates.map((date, i) => {
+          const scheduleLines = getNextOccurrences(cfg, 5).map((date, i) => {
             const user = queue[i % queue.length];
             const formattedDate = formatDateObject(date);
             return `• ${formattedDate}: <@${user}>`;
@@ -357,24 +366,11 @@ async function postWeeklySummary(channel, name) {
     const queue = queueStore.getItem(channel, name) || [];
     if (!cfg || queue.length === 0) return;
 
-    const days = cfg.days.map(d => WEEKDAY_MAP[d]).join(',');
-    const [h, m] = cfg.time.split(':').map(Number);
-    const cronPattern = `${m} ${h} * * ${days}`;
-    const job = new CronJob(cronPattern, () => {}, null, false, cfg.tz);
+    const upcomingPicks = getNextOccurrences(cfg, 7);
     
-    const upcomingPicks = [];
-    let currentDate = new Date();
-    while(upcomingPicks.length < 7) {
-      let nextDate = job.nextDate(currentDate);
-      if (!upcomingPicks.some(d => formatDateObject(d.date) === formatDateObject(nextDate))) {
-        upcomingPicks.push({ date: nextDate });
-      }
-      currentDate = nextDate;
-    }
-    
-    const scheduleLines = upcomingPicks.map((pick, i) => {
+    const scheduleLines = upcomingPicks.map((pickDate, i) => {
       const user = queue[i % queue.length];
-      const formattedDate = formatDateObject(pick.date);
+      const formattedDate = formatDateObject(pickDate);
       return `• *${formattedDate}*: <@${user}>`;
     });
 
@@ -394,59 +390,63 @@ async function postWeeklySummary(channel, name) {
 // ─── Slash command handler ────────────────────────────────────────────────────
 app.command('/cucumber', async ({ack,body,client,say})=>{
   await ack();
-  const channel = body.channel_id;
-  const text = (body.text||'').trim();
+  try {
+    const channel = body.channel_id;
+    const text = (body.text||'').trim();
 
-  if (text.toLowerCase().startsWith('shuffle')) {
-    const nameToShuffle = text.substring(7).trim();
-    if (!nameToShuffle) {
-      return say({ response_type: 'ephemeral', text: 'Please specify which rotation to shuffle. Usage: `/cucumber shuffle [rotation name]`' });
+    if (text.toLowerCase().startsWith('shuffle')) {
+      const nameToShuffle = text.substring(7).trim();
+      if (!nameToShuffle) {
+        return say({ response_type: 'ephemeral', text: 'Please specify which rotation to shuffle. Usage: `/cucumber shuffle [rotation name]`' });
+      }
+      const rotations = configStore.get(channel);
+      const rotationName = Object.keys(rotations).find(name => name.toLowerCase() === nameToShuffle.toLowerCase());
+
+      if (!rotationName) {
+        return say({ response_type: 'ephemeral', text: `Could not find a rotation named *${nameToShuffle}*.` });
+      }
+
+      const queue = queueStore.getItem(channel, rotationName) || [];
+      if (queue.length < 2) {
+        return say({ response_type: 'in_channel', text: `The *${rotationName}* rotation has too few members to shuffle.` });
+      }
+
+      for (let i = queue.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [queue[i], queue[j]] = [queue[j], queue[i]];
+      }
+      
+      queueStore.setItem(channel, rotationName, queue);
+      const newOrder = queue.map((u, i) => `${i+1}. <@${u}>`).join('\n');
+      return say({ response_type: 'in_channel', text: `✅ The queue for *${rotationName}* has been shuffled.\n\nNew order:\n${newOrder}` });
     }
-    const rotations = configStore.get(channel);
-    const rotationName = Object.keys(rotations).find(name => name.toLowerCase() === nameToShuffle.toLowerCase());
 
-    if (!rotationName) {
-      return say({ response_type: 'ephemeral', text: `Could not find a rotation named *${nameToShuffle}*.` });
-    }
-
-    const queue = queueStore.getItem(channel, rotationName) || [];
-    if (queue.length < 2) {
-      return say({ response_type: 'in_channel', text: `The *${rotationName}* rotation has too few members to shuffle.` });
-    }
-
-    for (let i = queue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [queue[i], queue[j]] = [queue[j], queue[i]];
-    }
-    
-    queueStore.setItem(channel, rotationName, queue);
-    const newOrder = queue.map((u, i) => `${i+1}. <@${u}>`).join('\n');
-    return say({ response_type: 'in_channel', text: `✅ The queue for *${rotationName}* has been shuffled.\n\nNew order:\n${newOrder}` });
-  }
-
-  if(text==='help'){
-    return say({ response_type:'ephemeral', text:
-      '*Cucumber Help*\n'+
-      '• `/cucumber` → Manage rotations\n'+
-      '• `/cucumber [name]` → Manually start a rotation\n' +
-      '• `/cucumber shuffle [name]` → Randomize the order of a rotation queue\n' +
-      '• `/cucumber help` → Show this help message'
-    });
-  }
-  
-  if(text){
-    const rotations = configStore.get(channel);
-    const rotationName = Object.keys(rotations).find(name => name.toLowerCase() === text.toLowerCase());
-    
-    if(rotationName){
-      console.log(`Manual trigger: Starting rotation "${rotationName}" in channel ${channel}`);
-      await say({ text:`Starting rotation *${rotationName}*...`, response_type:'in_channel'});
-      return startPick(channel, rotationName, client);
+    if(text==='help'){
+      return say({ response_type:'ephemeral', text:
+        '*Cucumber Help*\n'+
+        '• `/cucumber` → Manage rotations\n'+
+        '• `/cucumber [name]` → Manually start a rotation\n' +
+        '• `/cucumber shuffle [name]` → Randomize the order of a rotation queue\n' +
+        '• `/cucumber help` → Show this help message'
+      });
     }
     
-    return openNewRotationModal(client,body.trigger_id,channel,text);
+    if(text){
+      const rotations = configStore.get(channel);
+      const rotationName = Object.keys(rotations).find(name => name.toLowerCase() === text.toLowerCase());
+      
+      if(rotationName){
+        console.log(`Manual trigger: Starting rotation "${rotationName}" in channel ${channel}`);
+        await say({ text:`Starting rotation *${rotationName}*...`, response_type:'in_channel'});
+        return startPick(channel, rotationName, client);
+      }
+      
+      return openNewRotationModal(client,body.trigger_id,channel,text);
+    }
+    await openSelectModal(client,body.trigger_id,channel);
+  } catch (error) {
+    console.error("A top-level error occurred in the /cucumber command handler:", error);
   }
-  await openSelectModal(client,body.trigger_id,channel);
 });
 
 // ─── View & Action Handlers ───────────────────────────────────────────────────
@@ -512,6 +512,7 @@ app.view('cucumber_new', async ({ack,view,client})=>{
     const name        = v.name_block.name_input.value.trim();
     const members     = v.member_block.members_select.selected_users || [];
     const days        = v.schedule_days.days_select.selected_options?.map(o=>o.value) || [];
+    const frequency   = v.frequency_block.frequency_select.selected_option?.value || 'weekly';
     const tzOption    = v.schedule_tz.tz_select.selected_option;
     const tzValue     = tzOption?.value || 'Etc/GMT+0';
     const tzDisplay   = tzOption?.text?.text || 'UTC+00:00';
@@ -521,20 +522,18 @@ app.view('cucumber_new', async ({ack,view,client})=>{
     const postWeeklySummary = summaryOpts.includes('postWeeklySummary');
     const summaryOnlyOnMondays = summaryOpts.includes('summaryOnlyOnMondays');
 
-    const filtered = members;
-
     if (editingName && editingName !== name) {
       configStore.deleteItem(channel, editingName);
       queueStore.deleteItem(channel, editingName);
     }
 
-    configStore.setItem(channel,name,{ days, time, tz: tzValue, timeout, postWeeklySummary, summaryOnlyOnMondays });
-    queueStore.setItem(channel,name,filtered);
+    configStore.setItem(channel,name,{ days, time, tz: tzValue, timeout, frequency, postWeeklySummary, summaryOnlyOnMondays, startDate: new Date().toISOString() });
+    queueStore.setItem(channel,name,members);
 
     await ensureBotInChannel(client,channel);
     await client.chat.postMessage({
       channel,
-      text:`Updated 🧹 *${name}*: ${filtered.length} members, ${days.join(', ')} @ ${time} (${tzDisplay})`
+      text:`Updated 🧹 *${name}*: ${members.length} members, ${frequency}, on ${days.join(', ')} @ ${time} (${tzDisplay})`
     });
 
     scheduleAll();
@@ -604,6 +603,42 @@ app.action('skip', async ({ack,body,client})=>{
 // ─── Scheduling ────────────────────────────────────────────────────────────────
 const scheduledJobs = new Map();
 
+function getWeekNumber(d) {
+    d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay()||7));
+    var yearStart = new Date(Date.UTC(d.getUTCFullYear(),0,1));
+    var weekNo = Math.ceil(( ( (d - yearStart) / 86400000) + 1)/7);
+    return weekNo;
+}
+
+function getNextOccurrences(cfg, count) {
+    const occurrences = [];
+    if (!cfg.days || cfg.days.length === 0 || !cfg.time || !cfg.tz) return occurrences;
+    
+    const [h, m] = cfg.time.split(':').map(Number);
+    const days = cfg.days.map(d => WEEKDAY_MAP[d]);
+    const rotationStartDate = new Date(cfg.startDate);
+    const startWeek = getWeekNumber(rotationStartDate);
+    const frequencyInterval = cfg.frequency === 'fortnightly' ? 2 : cfg.frequency === 'monthly' ? 4 : 1;
+
+    let currentDate = new Date();
+    currentDate.setSeconds(0, 0);
+
+    while (occurrences.length < count) {
+        currentDate.setDate(currentDate.getDate() + 1);
+        
+        if (days.includes(currentDate.getDay())) {
+            const currentWeek = getWeekNumber(currentDate);
+            if ((currentWeek - startWeek) % frequencyInterval === 0) {
+                const newDate = new Date(currentDate.getTime());
+                newDate.setHours(h, m);
+                occurrences.push(newDate);
+            }
+        }
+    }
+    return occurrences;
+}
+
 function scheduleJob(channel, name, cfg) {
   const jobKey = `${channel}:${name}`;
   if (scheduledJobs.has(jobKey)) {
@@ -620,9 +655,20 @@ function scheduleJob(channel, name, cfg) {
       const [h, m] = cfg.time.split(':').map(Number);
       const days = cfg.days.map(d => WEEKDAY_MAP[d]).join(',');
       const cronPattern = `${m} ${h} * * ${days}`;
+      const rotationStartDate = new Date(cfg.startDate);
+      const startWeek = getWeekNumber(rotationStartDate);
+      const frequencyInterval = cfg.frequency === 'fortnightly' ? 2 : cfg.frequency === 'monthly' ? 4 : 1;
       
-      pickJob = new CronJob(cronPattern, () => startPick(channel, name, app.client), null, true, cfg.tz);
-      console.log(`✅ Scheduled pick job for ${name} - next run:`, pickJob.nextDate().toString());
+      pickJob = new CronJob(cronPattern, () => {
+        const currentWeek = getWeekNumber(new Date());
+        if ((currentWeek - startWeek) % frequencyInterval === 0) {
+            console.log(`Executing pick for ${name} in week ${currentWeek}`);
+            startPick(channel, name, app.client)
+        } else {
+            console.log(`Skipping pick for ${name} in week ${currentWeek} due to frequency settings.`);
+        }
+      }, null, true, cfg.tz);
+      console.log(`✅ Scheduled pick job for ${name}`);
     } catch (error) { console.error(`Error creating pick job for ${name}:`, error); }
   }
 
@@ -634,7 +680,7 @@ function scheduleJob(channel, name, cfg) {
         const summaryPattern = `${m} ${h} * * ${summaryDays}`;
 
         summaryJob = new CronJob(summaryPattern, () => postWeeklySummary(channel, name), null, true, cfg.tz);
-        console.log(`✅ Scheduled summary job for ${name} - next run:`, summaryJob.nextDate().toString());
+        console.log(`✅ Scheduled summary job for ${name}`);
       }
     } catch (error) { console.error(`Error creating summary job for ${name}:`, error); }
   }

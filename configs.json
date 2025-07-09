@@ -1,22 +1,18 @@
 {
-  "C094XU4RR7V": {
-    "🧹 Sweep": {
-      "days": [
-        "mon",
-        "tue",
-        "wed",
-        "thu",
-        "fri"
-      ],
-      "time": "22:38",
-      "tz": "Etc/GMT-1",
-      "timeout": null,
-      "postWeeklySummary": false,
-      "summaryOnlyOnMondays": false
-    }
-  },
   "C094XV7L6F5": {
-    "🧹 Sweep": {
+    "Who's on Retro": {
+      "days": [
+        "mon"
+      ],
+      "time": "23:38",
+      "tz": "Etc/GMT-1",
+      "timeout": null,
+      "frequency": "fortnightly",
+      "postWeeklySummary": false,
+      "summaryOnlyOnMondays": false,
+      "startDate": "2025-07-09T22:37:43.728Z"
+    },
+    "Sweep": {
       "days": [
         "mon",
         "tue",
@@ -24,11 +20,13 @@
         "thu",
         "fri"
       ],
-      "time": "22:41",
+      "time": "23:39",
       "tz": "Etc/GMT-1",
       "timeout": null,
+      "frequency": "weekly",
       "postWeeklySummary": false,
-      "summaryOnlyOnMondays": false
+      "summaryOnlyOnMondays": false,
+      "startDate": "2025-07-09T22:38:07.832Z"
     }
   }
 }
