@@ -1,0 +1,14 @@
+// .devcontainer/devcontainer.json
+{
+  "name": "Cucumber Bot",
+  "image": "mcr.microsoft.com/vscode/devcontainers/javascript-node:0-20",
+  "features": {},
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode"
+      ]
+    }
+  }
+}
