@@ -1,5 +1,5 @@
 {
-  "C09501PRB4M": {
+  "C094XU4RR7V": {
     "🧹 Sweep": {
       "days": [
         "mon",
@@ -8,15 +8,14 @@
         "thu",
         "fri"
       ],
-      "time": "21:55",
+      "time": "22:38",
       "tz": "Etc/GMT-1",
-      "timeout": 1,
+      "timeout": null,
       "postWeeklySummary": false,
       "summaryOnlyOnMondays": false
-    },
-    "showAudit": false
+    }
   },
-  "C094VF5KSJX": {
+  "C094XV7L6F5": {
     "🧹 Sweep": {
       "days": [
         "mon",
@@ -25,7 +24,7 @@
         "thu",
         "fri"
       ],
-      "time": "22:28",
+      "time": "22:41",
       "tz": "Etc/GMT-1",
       "timeout": null,
       "postWeeklySummary": false,
