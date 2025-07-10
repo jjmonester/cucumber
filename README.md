@@ -1,8 +1,8 @@
-🥒 Cucumber Bot
+🥒 Dill Bot
 ===============
-Pickle is dead. Turnip was on the horizon. But Cucumber is here, fresh, crunchy and entirely un-pickled. No dev knowledge and entirely bug ridden (probably) this vibe coding experiment is an attempt to fill the void Pickle left in our world. 
+Pickle is dead. Turnip was on the horizon. But Dill is here, fresh, aromatic and entirely separate from the veggies. No dev knowledge and entirely bug ridden (probably) this vibe coding experiment is an attempt to fill the void Pickle left in our world. 
 
-Cucumber Bot is a Slack application designed to manage on-call rotations, daily hand-offs, and other scheduled team tasks with ease. It provides a simple, interactive interface within Slack to create, manage, and automate user queues.
+Dill Bot is a Slack application designed to manage on-call rotations, daily hand-offs, and other scheduled team tasks with ease. It provides a simple, interactive interface within Slack to create, manage, and automate user queues.
 
 ## Features
 
@@ -19,20 +19,20 @@ Cucumber Bot is a Slack application designed to manage on-call rotations, daily 
 
 ### Slash Commands
 
-The bot is controlled through a primary slash command, `/cucumber`, with several sub-commands:
+The bot is controlled through a primary slash command, `/dill`, with several sub-commands:
 
--   `/cucumber`: Opens the main interactive modal to view and manage all rotations in the current channel.
+-   `/dill`: Opens the main interactive modal to view and manage all rotations in the current channel.
     
--   `/cucumber [rotation-name]`: Manually triggers a pick from the specified rotation.
+-   `/dill [rotation-name]`: Manually triggers a pick from the specified rotation.
     
--   `/cucumber shuffle [rotation-name]`: Instantly randomizes the order of a rotation's queue.
+-   `/dill shuffle [rotation-name]`: Instantly randomizes the order of a rotation's queue.
     
--   `/cucumber help`: Displays a brief, ephemeral help message.
+-   `/dill help`: Displays a brief, ephemeral help message.
     
 
 ### Interactive UI & Workflow
 
--   Central Management Modal: The `/cucumber` command opens a user-friendly modal that lists all existing rotations and shows a preview of the next 5 upcoming picks for each.
+-   Central Management Modal: The `/dill` command opens a user-friendly modal that lists all existing rotations and shows a preview of the next 5 upcoming picks for each.
     
 -   Live UI Updates: When you save changes to a rotation, the main list automatically refreshes to show the latest state.
     
@@ -56,7 +56,7 @@ The bot is controlled through a primary slash command, `/cucumber`, with several
 
 ## Setup and Installation
 
-Follow these steps to get the Cucumber Bot running in your Slack workspace.
+Follow these steps to get the dill Bot running in your Slack workspace.
 
 #### 1\. Prerequisites
 
@@ -106,4 +106,4 @@ Bash
 npm start
 ```
 
-If successful, you will see the message "⚡️ Cucumber Bot running!" in your console. You can now invite the bot to a channel in Slack and start using the `/cucumber` command.
+If successful, you will see the message "⚡️ Dill Bot running!" in your console. You can now invite the bot to a channel in Slack and start using the `/dill` command.
